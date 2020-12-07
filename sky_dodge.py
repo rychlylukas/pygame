@@ -25,10 +25,8 @@ class Player(pygame.sprite.Sprite):
     def update(self, pressed_keys):
         if pressed_keys[K_UP]:
             self.rect.move_ip(0, -5)
-            move_up_sound.play()
         if pressed_keys[K_DOWN]:
             self.rect.move_ip(0, 5)
-            move_down_sound.play()
         if pressed_keys[K_LEFT]:
             self.rect.move_ip(-5, 0)
         if pressed_keys[K_RIGHT]:
@@ -61,6 +59,24 @@ class Enemy(pygame.sprite.Sprite):
         if self.rect.right < 0:
             self.kill()
 
+class Coin(pygame.sprite.Sprite):
+    def __init__(self):
+        super(Coin, self).__init__()
+        self.surf = pygame.image.load("images/coin.png").convert()
+        self.surf.set_colorkey((0, 0, 0), RLEACCEL)
+        self.rect = self.surf.get_rect(
+            center=(
+                random.randint(SCREEN_WIDTH + 20, SCREEN_WIDTH + 100),
+                random.randint(0, SCREEN_HEIGHT),
+            )
+        )
+    def update(self, smazani):
+        self.rect.move_ip(-5, 0)
+        if self.rect.right < 0:
+            self.kill()
+        if (smazani == 1):
+            self.kill()
+
 class Cloud(pygame.sprite.Sprite):
     def __init__(self):
         super(Cloud, self).__init__()
@@ -77,40 +93,32 @@ class Cloud(pygame.sprite.Sprite):
         if self.rect.right < 0:
             self.kill()
 
-pygame.mixer.init()
-
 pygame.init()
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+myfont = pygame.font.SysFont("monospace", 40)
+
 
 ADDENEMY = pygame.USEREVENT + 1
 pygame.time.set_timer(ADDENEMY, 250)
 ADDCLOUD = pygame.USEREVENT + 2
 pygame.time.set_timer(ADDCLOUD, 1000)
+ADDCOIN = pygame.USEREVENT + 3
+pygame.time.set_timer(ADDCOIN, 1000)
 
 player = Player()
 
 enemies = pygame.sprite.Group()
 clouds = pygame.sprite.Group()
+coins = pygame.sprite.Group()
 all_sprites = pygame.sprite.Group()
 all_sprites.add(player)
-
-pygame.mixer.music.load("sound/Sky_dodge_theme.ogg")
-pygame.mixer.music.play(loops=-1)
-pygame.mixer.music.set_volume(0.5)
-
-move_up_sound = pygame.mixer.Sound("sound/Jet_up.ogg")
-move_down_sound = pygame.mixer.Sound("sound/Jet_down.ogg")
-collision_sound = pygame.mixer.Sound("sound/Boom.ogg")
-
-move_up_sound.set_volume(0.8)
-move_down_sound.set_volume(0.8)
-collision_sound.set_volume(1.0)
 
 clock = pygame.time.Clock()
 
 running = True
 
+score = 0
 
 while running:
     for event in pygame.event.get():
@@ -132,35 +140,44 @@ while running:
             clouds.add(new_cloud)
             all_sprites.add(new_cloud)
 
+        elif event.type == ADDCOIN:
+            new_coin = Coin()
+            coins.add(new_coin)
+            all_sprites.add(new_coin)
+
     pressed_keys = pygame.key.get_pressed()
 
     player.update(pressed_keys)
 
     enemies.update()
     clouds.update()
+    coins.update(0)
 
     screen.fill((13, 206, 250))
+
+    vypis_score = myfont.render("Score: {0}".format(score), 1, (0, 0, 0))
+    screen.blit(vypis_score, (5, 10))
 
     for entity in all_sprites:
         screen.blit(entity.surf, entity.rect)
 
     if pygame.sprite.spritecollideany(player, enemies):
         player.kill()
-
-        move_up_sound.stop()
-        move_down_sound()
-        pygame.mixer.music.stop()
-        pygame.time.delay(50)
-        collision_sound.play()
-        pygame.time.delay(500)
-
         running = False
+
+    if pygame.sprite.spritecollideany(player, coins):
+        score += 1
+        coins.update(1)
+
+    if pygame.sprite.spritecollideany(player, clouds):
+        screen.fill((255, 255, 255))
+        varovani = myfont.render("Musíš vyletět z mraku", 1, (0, 0, 0))
+        screen.blit(varovani, (10, 10))
 
     pygame.display.flip()
 
     clock.tick(30)
 
-pygame.mixer.music.stop()
 pygame.mixer.quit()
 
 
